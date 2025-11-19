@@ -5202,7 +5202,7 @@ def main():
     
     # First admin setup (Optional - remove after first use)
     # Uncomment and replace with your user ID to add yourself as admin
-    # add_admin(6328953001, "Boss")  # Replace with your user ID
+    # add_admin(6328953001, "Smile_p2")  # Replace with your user ID
     
     logger.info("Auto Lottery Bot starting...")
     print("Auto Lottery Bot is running...")
