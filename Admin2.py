@@ -1800,8 +1800,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"❌ Access Denied\n\n"
             f"Sorry, you are not authorized to use this bot.\n\n"
-            f"Please contact admin for access: {ADMIN_CONTACT}",
-            parse_mode='Markdown'
+            f"Please contact admin for access: {ADMIN_CONTACT}"
+            # parse_mode='Markdown' ကို ဖျက်ပါ
         )
         return
     
@@ -1877,7 +1877,8 @@ Manual Features:
 
 Press Run Bot to start auto betting!
     """
-    await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(user_id), parse_mode='Markdown')
+    await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(user_id))
+    # parse_mode='Markdown' ကို ဖျက်ပါ
 
 async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str):
     """Auto login with saved credentials"""
@@ -1916,10 +1917,9 @@ Platform: {platform_name}
 User ID: {user_id_display}
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
-
-            """
-            await loading_msg.edit_text(success_text, parse_mode='Markdown')
-            await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
+    """
+    await loading_msg.edit_text(success_text)  # parse_mode ဖျက်ပါ
+    await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
             await loading_msg.edit_text(f"Auto login failed: {message}")
@@ -1975,7 +1975,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         platform_name = get_platform_name(user_session['platform'])
         
-        balance_text = f"""
+      balance_text = f"""
 Account Information
 
 Platform: {platform_name}
@@ -1984,8 +1984,8 @@ Balance: {balance:,.0f} K
 Status: LOGGED IN
 
 Last update: {datetime.now().strftime("%H:%M:%S")}
-        """
-        await update.message.reply_text(balance_text, parse_mode='Markdown')
+    """
+    await update.message.reply_text(balance_text)  # parse_mode ဖျက်ပါ
     except Exception as e:
         await update.message.reply_text(f"Error getting balance: {str(e)}")
 
@@ -2476,17 +2476,16 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
             
             platform_name = get_platform_name(user_session['platform'])
             
-            success_text = f"""
+           success_text = f"""
 Login Successful!
 
 Platform: {platform_name}
 User ID: {user_id_display}
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
-
-            """
-            await loading_msg.edit_text(success_text, parse_mode='Markdown')
-            await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
+    """
+    await loading_msg.edit_text(success_text)  # parse_mode ဖျက်ပါ
+    await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
             await loading_msg.edit_text(f"❌ Login failed: {message}\n\nPlease check your credentials and try again.")
