@@ -18,9 +18,8 @@ BOT_TOKEN = "8006342815:AAHyl0Aamf5fCyj4u0EgYil0zhUcisFnXq0"
 CHANNEL_USERNAME = "@Vipsafesingalchannel298"
 CHANNEL_LINK = "https://t.me/Vipsafesingalchannel298"
 
-# Admin configuration
-ADMIN_USER_IDS = [6328953001]  # REPLACE WITH YOUR TELEGRAM USER ID
-ADMIN_CONTACT = "@Smile_p2"
+# Admin configuration - NEW
+ADMIN_CONTACT = "@Smile_p2"  # Admin contact username
 
 # Multiple API endpoints - 777 only
 API_ENDPOINTS = {
@@ -43,105 +42,6 @@ logger = logging.getLogger(__name__)
 
 # Database setup
 DB_NAME = "auto_bot.db"
-
-# Admin management functions
-def save_authorized_users(user_ids):
-    """Save authorized user IDs to database"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        # Create authorized_users table if not exists
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS authorized_users (
-                user_id INTEGER PRIMARY KEY,
-                added_by INTEGER,
-                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Clear existing users
-        cursor.execute('DELETE FROM authorized_users')
-        
-        # Insert new users
-        for user_id in user_ids:
-            cursor.execute('''
-                INSERT INTO authorized_users (user_id, added_by)
-                VALUES (?, ?)
-            ''', (user_id, user_ids[0]))  # First user is the main admin
-        
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        logger.error(f"Error saving authorized users: {e}")
-        return False
-
-def get_authorized_users():
-    """Get all authorized user IDs from database"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT user_id FROM authorized_users')
-        results = cursor.fetchall()
-        conn.close()
-        
-        return [result[0] for result in results]
-    except Exception as e:
-        logger.error(f"Error getting authorized users: {e}")
-        return []
-
-def add_authorized_user(user_id, added_by):
-    """Add single authorized user"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT OR REPLACE INTO authorized_users (user_id, added_by)
-            VALUES (?, ?)
-        ''', (user_id, added_by))
-        
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        logger.error(f"Error adding authorized user: {e}")
-        return False
-
-def remove_authorized_user(user_id):
-    """Remove authorized user"""
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        cursor.execute('DELETE FROM authorized_users WHERE user_id = ?', (user_id,))
-        
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        logger.error(f"Error removing authorized user: {e}")
-        return False
-
-def is_authorized_user(user_id):
-    """Check if user is authorized to use the bot"""
-    try:
-        # FIXED: Handle both string and integer user IDs
-        user_id_int = int(user_id)
-        
-        # Allow admin users
-        if user_id_int in ADMIN_USER_IDS:
-            return True
-            
-        # Check authorized users database
-        authorized_users = get_authorized_users()
-        return user_id_int in authorized_users
-        
-    except (ValueError, TypeError) as e:
-        logger.error(f"Error checking user authorization for {user_id}: {e}")
-        return False
 
 def migrate_database():
     """Migrate database to add missing columns"""
@@ -213,15 +113,6 @@ def init_database():
                 loss_target INTEGER DEFAULT 0,
                 language TEXT DEFAULT 'english',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Create authorized_users table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS authorized_users (
-                user_id INTEGER PRIMARY KEY,
-                added_by INTEGER,
-                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -334,6 +225,28 @@ def init_database():
             )
         ''')
         
+        # Create admin_game_ids table - NEW
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_game_ids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                platform TEXT DEFAULT '777',
+                game_id TEXT NOT NULL,
+                added_by INTEGER,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(platform, game_id)
+            )
+        ''')
+        
+        # Create admin_users table - NEW
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_users (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                is_super_admin BOOLEAN DEFAULT 0,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
         conn.close()
         logger.info("Database initialized successfully")
@@ -341,6 +254,125 @@ def init_database():
     except Exception as e:
         logger.error(f"Database initialization error: {e}")
         print(f"Database initialization error: {e}")
+
+# Admin Game ID Management Functions - NEW
+def is_admin(user_id):
+    """Check if user is admin"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT user_id FROM admin_users WHERE user_id = ?', (user_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        return result is not None
+    except Exception as e:
+        logger.error(f"Error checking admin status: {e}")
+        return False
+
+def add_admin(user_id, username=""):
+    """Add user as admin"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO admin_users (user_id, username)
+            VALUES (?, ?)
+        ''', (user_id, username))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error adding admin: {e}")
+        return False
+
+def remove_admin(user_id):
+    """Remove user from admin"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM admin_users WHERE user_id = ?', (user_id,))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error removing admin: {e}")
+        return False
+
+def get_allowed_game_ids(platform='777'):
+    """Get allowed game IDs for platform"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT game_id FROM admin_game_ids WHERE platform = ?', (platform,))
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [result[0] for result in results]
+    except Exception as e:
+        logger.error(f"Error getting allowed game IDs: {e}")
+        return []
+
+def add_game_id(platform, game_id, added_by):
+    """Add game ID to allowed list"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR IGNORE INTO admin_game_ids (platform, game_id, added_by)
+            VALUES (?, ?, ?)
+        ''', (platform, game_id, added_by))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error adding game ID: {e}")
+        return False
+
+def remove_game_id(platform, game_id):
+    """Remove game ID from allowed list"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM admin_game_ids WHERE platform = ? AND game_id = ?', (platform, game_id))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error removing game ID: {e}")
+        return False
+
+def get_all_game_ids(platform='777'):
+    """Get all game IDs with admin info"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT ag.game_id, ag.added_at, au.username 
+            FROM admin_game_ids ag 
+            LEFT JOIN admin_users au ON ag.added_by = au.user_id 
+            WHERE ag.platform = ?
+            ORDER BY ag.added_at DESC
+        ''', (platform,))
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return results
+    except Exception as e:
+        logger.error(f"Error getting all game IDs: {e}")
+        return []
 
 def save_channel_status(user_id, has_joined):
     """Save channel join status"""
@@ -1769,6 +1801,193 @@ class LotteryBot:
             logger.error(f"Get results error for {self.platform}: {e}")
             return []
 
+# Admin Commands - NEW
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command handler"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized to use admin commands.")
+        return
+    
+    admin_help_text = """
+🛠️ **Admin Commands**
+
+**Game ID Management:**
+/addgame <game_id> - Add Game ID to allowed list
+/removegame <game_id> - Remove Game ID from allowed list
+/listgames - Show all allowed Game IDs
+/gameids - Show Game IDs count
+
+**Admin Management:**
+/addadmin <user_id> - Add user as admin
+/removeadmin <user_id> - Remove user from admin
+/listadmins - Show all admins
+
+**Examples:**
+/addgame 123456
+/removegame 789012
+/addadmin 123456789
+    """
+    
+    await update.message.reply_text(admin_help_text, parse_mode='Markdown')
+
+async def add_game_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Add Game ID to allowed list"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /addgame <game_id>")
+        return
+    
+    game_id = context.args[0].strip()
+    platform = '777'  # Default platform
+    
+    if add_game_id(platform, game_id, user_id):
+        await update.message.reply_text(f"✅ Game ID `{game_id}` added to allowed list for {get_platform_name(platform)}")
+    else:
+        await update.message.reply_text("❌ Error adding Game ID. It might already exist.")
+
+async def remove_game_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Remove Game ID from allowed list"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /removegame <game_id>")
+        return
+    
+    game_id = context.args[0].strip()
+    platform = '777'
+    
+    if remove_game_id(platform, game_id):
+        await update.message.reply_text(f"✅ Game ID `{game_id}` removed from allowed list")
+    else:
+        await update.message.reply_text("❌ Error removing Game ID. It might not exist.")
+
+async def list_games_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all allowed Game IDs"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    platform = '777'
+    game_ids = get_all_game_ids(platform)
+    
+    if not game_ids:
+        await update.message.reply_text("📝 No Game IDs in the allowed list.")
+        return
+    
+    games_text = f"🆔 **Allowed Game IDs - {get_platform_name(platform)}**\n\n"
+    
+    for i, (game_id, added_at, added_by) in enumerate(game_ids, 1):
+        time_str = added_at.split(' ')[0] if added_at else 'Unknown'
+        added_by_name = added_by or 'Unknown'
+        games_text += f"{i}. `{game_id}`\n   Added by: {added_by_name}\n   Date: {time_str}\n\n"
+    
+    await update.message.reply_text(games_text, parse_mode='Markdown')
+
+async def game_ids_count_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show Game IDs count"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    platform = '777'
+    game_ids = get_allowed_game_ids(platform)
+    
+    count = len(game_ids)
+    await update.message.reply_text(f"📊 **Game IDs Statistics**\n\nPlatform: {get_platform_name(platform)}\nTotal Allowed Game IDs: {count}")
+
+async def add_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Add user as admin"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /addadmin <user_id>")
+        return
+    
+    try:
+        new_admin_id = int(context.args[0].strip())
+        username = update.effective_user.username or ""
+        
+        if add_admin(new_admin_id, username):
+            await update.message.reply_text(f"✅ User `{new_admin_id}` added as admin")
+        else:
+            await update.message.reply_text("❌ Error adding admin")
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID")
+
+async def remove_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Remove user from admin"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Usage: /removeadmin <user_id>")
+        return
+    
+    try:
+        admin_id = int(context.args[0].strip())
+        
+        if remove_admin(admin_id):
+            await update.message.reply_text(f"✅ User `{admin_id}` removed from admin")
+        else:
+            await update.message.reply_text("❌ Error removing admin")
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID")
+
+async def list_admins_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all admins"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_admin(int(user_id)):
+        await update.message.reply_text("❌ You are not authorized.")
+        return
+    
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT user_id, username, added_at FROM admin_users ORDER BY added_at DESC')
+        admins = cursor.fetchall()
+        conn.close()
+        
+        if not admins:
+            await update.message.reply_text("👥 No admins found.")
+            return
+        
+        admins_text = "👥 **Admin Users**\n\n"
+        
+        for i, (admin_id, username, added_at) in enumerate(admins, 1):
+            time_str = added_at.split(' ')[0] if added_at else 'Unknown'
+            username_display = f"@{username}" if username else "No username"
+            admins_text += f"{i}. `{admin_id}` - {username_display}\n   Added: {time_str}\n\n"
+        
+        await update.message.reply_text(admins_text, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Error listing admins: {e}")
+        await update.message.reply_text("❌ Error listing admins")
+
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle callback queries from inline keyboards"""
     query = update.callback_query
@@ -1782,7 +2001,8 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         if has_joined:
             await query.edit_message_text(
                 "Thank you for joining our channel! You can now use the bot.\n\n"
-                "Press /start to begin."
+                "Press /start to begin.",
+                reply_markup=None
             )
         else:
             await query.edit_message_text(
@@ -1793,15 +2013,6 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
-    
-    # Check if user is authorized
-    if not is_authorized_user(user.id):
-        await update.message.reply_text(
-            f"❌ Access Denied\n\n"
-            f"Sorry, you are not authorized to use this bot.\n\n"
-            f"Please contact admin for access: {ADMIN_CONTACT}"
-        )
-        return
     
     has_joined = await check_channel_membership(update, context, user.id)
     
@@ -1823,7 +2034,8 @@ Please join our channel below and then click I've Joined to verify.
         """
         await update.message.reply_text(
             welcome_text,
-            reply_markup=get_join_channel_keyboard()
+            reply_markup=get_join_channel_keyboard(),
+            parse_mode='Markdown'
         )
         return
     
@@ -1874,10 +2086,10 @@ Manual Features:
 
 Press Run Bot to start auto betting!
     """
-    await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(user_id))
+    await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(user_id), parse_mode='Markdown')
 
 async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str):
-    """Auto login with saved credentials"""
+    """Auto login with saved credentials - WITH GAME ID CHECK"""
     user_session = user_sessions.get(user_id)
     if not user_session:
         return
@@ -1891,39 +2103,54 @@ async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         )
         
         if success:
+            # NEW: Check user's Game ID against admin list
+            user_info = await user_session['api_instance'].get_user_info()
+            user_game_id = user_info.get('userId', '')
+            platform = user_session['platform']
+            
+            # Check if user's Game ID is in admin's allowed list
+            allowed_game_ids = get_allowed_game_ids(platform)
+            
+            if allowed_game_ids and user_game_id not in allowed_game_ids:
+                # User not authorized - show admin contact
+                user_session['logged_in'] = False
+                await loading_msg.edit_text(
+                    f"❌ Auto Login Failed - Unauthorized Account\n\n"
+                    f"Your Game ID: `{user_game_id}`\n"
+                    f"Platform: {get_platform_name(platform)}\n\n"
+                    f"This account is not authorized to use this bot.\n"
+                    f"Please contact admin for access: {ADMIN_CONTACT}",
+                    parse_mode='Markdown'
+                )
+                return
+            
+            # Continue with successful login
             user_session['logged_in'] = True
             user_session['step'] = 'main'
             
             balance = await user_session['api_instance'].get_balance()
-            user_info = await user_session['api_instance'].get_user_info()
-            user_id_display = user_info.get('userId', 'N/A')
-            
-            current_amount = get_current_bet_amount(user_id)
-            bet_sequence = get_user_setting(user_id, 'bet_sequence', '100,300,700,1600,3200,7600,16000,32000')
-            current_index = get_user_setting(user_id, 'current_bet_index', 0)
-            
-            bot_session = get_bot_session(user_id)
             
             platform_name = get_platform_name(user_session['platform'])
             
             success_text = f"""
-Auto Login Successful!
+✅ Auto Login Successful!
 
 Platform: {platform_name}
-User ID: {user_id_display}
+Game ID: `{user_game_id}`
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
 
+Status: Authorized ✅
             """
-            await loading_msg.edit_text(success_text)
+            await loading_msg.edit_text(success_text, parse_mode='Markdown')
             await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
-            await loading_msg.edit_text(f"Auto login failed: {message}")
+            await loading_msg.edit_text(f"❌ Auto login failed: {message}")
             await update.message.reply_text("Please login manually:", reply_markup=get_login_keyboard())
             
     except Exception as e:
-        await loading_msg.edit_text(f"Auto login error: {str(e)}")
+        await loading_msg.edit_text(f"❌ Auto login error: {str(e)}")
         await update.message.reply_text("Please login manually:", reply_markup=get_login_keyboard())
 
 def get_platform_name(platform_code):
@@ -1951,7 +2178,7 @@ Please follow these steps:
 
 Your credentials will be saved for future use!
     """
-    await update.message.reply_text(login_guide, reply_markup=get_login_keyboard())
+    await update.message.reply_text(login_guide, reply_markup=get_login_keyboard(), parse_mode='Markdown')
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -1982,7 +2209,7 @@ Status: LOGGED IN
 
 Last update: {datetime.now().strftime("%H:%M:%S")}
         """
-        await update.message.reply_text(balance_text)
+        await update.message.reply_text(balance_text, parse_mode='Markdown')
     except Exception as e:
         await update.message.reply_text(f"Error getting balance: {str(e)}")
 
@@ -2029,7 +2256,7 @@ async def results_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         results_text += f"\nLast updated: {current_time}"
         
-        await update.message.reply_text(results_text)
+        await update.message.reply_text(results_text, parse_mode='Markdown')
     except Exception as e:
         logger.error(f"Error getting results: {str(e)}")
         await update.message.reply_text(f"Error getting results: {str(e)}")
@@ -2071,7 +2298,7 @@ async def my_bets_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             bets_text += f"{i+1}. {issue} - {bet_type} - {amount:,}K - {result_emoji} {result_text} \n"
         
-        await update.message.reply_text(bets_text)
+        await update.message.reply_text(bets_text, parse_mode='Markdown')
     except Exception as e:
         logger.error(f"Error in my_bets_command: {e}")
         await update.message.reply_text("Error getting bet history. Please try again.")
@@ -2106,7 +2333,8 @@ async def place_colour_bet_handler(update: Update, context: ContextTypes.DEFAULT
         await update.message.reply_text(
             f"Wait for next period\n\n"
             f"You have already placed a bet on issue {current_issue}.\n"
-            f"Please wait for the next game period to place another bet."
+            f"Please wait for the next game period to place another bet.",
+            parse_mode='Markdown'
         )
         return
     
@@ -2154,7 +2382,7 @@ Sequence: {bet_sequence}
 
 Time: {datetime.now().strftime("%H:%M:%S")}
             """
-            await loading_msg.edit_text(bet_text)
+            await loading_msg.edit_text(bet_text, parse_mode='Markdown')
             
         else:
             await loading_msg.edit_text(f"{colour} bet failed: {message}")
@@ -2212,7 +2440,7 @@ Example BS Patterns:
 Choose an option to get started:
         """
     
-    await update.message.reply_text(bs_info, reply_markup=get_bs_pattern_keyboard())
+    await update.message.reply_text(bs_info, reply_markup=get_bs_pattern_keyboard(), parse_mode='Markdown')
 
 async def set_bs_pattern_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Set BS Pattern and activate BS Formula mode"""
@@ -2331,7 +2559,7 @@ Example Colour Patterns:
 Choose an option to get started:
         """
     
-    await update.message.reply_text(colour_info, reply_markup=get_colour_pattern_keyboard())
+    await update.message.reply_text(colour_info, reply_markup=get_colour_pattern_keyboard(), parse_mode='Markdown')
 
 async def set_colour_pattern_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Set Colour Pattern and activate Colour Formula mode"""
@@ -2431,15 +2659,6 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
     user_id = str(update.effective_user.id)
     user_session = user_sessions.get(user_id)
     
-    # Check if user is authorized
-    if not is_authorized_user(update.effective_user.id):
-        await update.message.reply_text(
-            f"❌ Access Denied\n\n"
-            f"Sorry, you are not authorized to use this bot.\n\n"
-            f"Please contact admin for access: {ADMIN_CONTACT}"
-        )
-        return
-    
     if not user_session or not user_session.get('phone') or not user_session.get('password'):
         await update.message.reply_text(
             "Please enter bot phone number and password first!",
@@ -2453,6 +2672,28 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
         success, message, token = await user_session['api_instance'].login(user_session['phone'], user_session['password'])
         
         if success:
+            # NEW: Check user's Game ID against admin list
+            user_info = await user_session['api_instance'].get_user_info()
+            user_game_id = user_info.get('userId', '')
+            platform = user_session['platform']
+            
+            # Check if user's Game ID is in admin's allowed list
+            allowed_game_ids = get_allowed_game_ids(platform)
+            
+            if allowed_game_ids and user_game_id not in allowed_game_ids:
+                # User not authorized - show admin contact
+                user_session['logged_in'] = False
+                await loading_msg.edit_text(
+                    f"❌ Login Failed - Unauthorized Account\n\n"
+                    f"Your Game ID: `{user_game_id}`\n"
+                    f"Platform: {get_platform_name(platform)}\n\n"
+                    f"This account is not authorized to use this bot.\n"
+                    f"Please contact admin for access: {ADMIN_CONTACT}",
+                    parse_mode='Markdown'
+                )
+                return
+            
+            # Continue with successful login
             user_session['logged_in'] = True
             user_session['step'] = 'main'
             
@@ -2462,32 +2703,27 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
                 save_user_setting(user_id, 'platform', user_session['platform'])
             
             balance = await user_session['api_instance'].get_balance()
-            user_info = await user_session['api_instance'].get_user_info()
-            user_id_display = user_info.get('userId', 'N/A')
-            
-            current_amount = get_current_bet_amount(user_id)
-            bet_sequence = get_user_setting(user_id, 'bet_sequence', '100,300,700,1600,3200,7600,16000,32000')
-            current_index = get_user_setting(user_id, 'current_bet_index', 0)
             
             platform_name = get_platform_name(user_session['platform'])
             
             success_text = f"""
-Login Successful!
+✅ Login Successful!
 
 Platform: {platform_name}
-User ID: {user_id_display}
+Game ID: `{user_game_id}`
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
 
+Status: Authorized ✅
             """
-            await loading_msg.edit_text(success_text)
+            await loading_msg.edit_text(success_text, parse_mode='Markdown')
             await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
-            await loading_msg.edit_text(f"❌ Login failed: {message}\n\nPlease check your credentials and try again.")
+            await loading_msg.edit_text(f"❌ Login failed: {message}")
             
     except Exception as e:
-        await loading_msg.edit_text(f"❌ Login error: {str(e)}\n\nPlease contact admin if problem persists: {ADMIN_CONTACT}")
+        await loading_msg.edit_text(f"❌ Login error: {str(e)}")
 
 async def place_bet_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, bet_type: int):
     """Handle bet placement"""
@@ -2507,7 +2743,8 @@ async def place_bet_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await update.message.reply_text(
             f"Wait for next period\n\n"
             f"You have already placed a bet on issue {current_issue}.\n"
-            f"Please wait for the next game period to place another bet."
+            f"Please wait for the next game period to place another bet.",
+            parse_mode='Markdown'
         )
         return
     
@@ -2551,7 +2788,7 @@ Issue: {issue_id}
 Type: {bet_type_str}
 Amount: {amount:,} K (Step {current_index + 1})
             """
-            await loading_msg.edit_text(bet_text)
+            await loading_msg.edit_text(bet_text, parse_mode='Markdown')
             
         else:
             await loading_msg.edit_text(f"Bet failed: {message}")
@@ -2647,7 +2884,8 @@ async def run_bot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"SL Layer: {sl_status}\n"
         f"Status: RUNNING\n\n"
         f"Bot will start placing bets automatically.\n"
-        f"{mode_details}"
+        f"{mode_details}",
+        parse_mode='Markdown'
     )
     
     asyncio.create_task(auto_betting_loop(user_id, context))
@@ -2717,7 +2955,8 @@ async def run_sl_bot_integrated(update: Update, context: ContextTypes.DEFAULT_TY
         f"Bet Sequence: {bet_sequence}\n"
         f"Starting Bet: {current_amount} K\n\n"
         f"Bot Status: RUNNING\n\n"
-        f"Bot will now start with {mode_text} mode for SL {sl_pattern_data['current_sl']}."
+        f"Bot will now start with {mode_text} mode for SL {sl_pattern_data['current_sl']}.",
+        parse_mode='Markdown'
     )
     
     asyncio.create_task(sl_betting_loop(user_id, context))
@@ -2761,7 +3000,8 @@ async def stop_bot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Mode: {current_mode}\n"
         f"Status: STOPPED\n\n"
         f"All betting activities have been stopped immediately.\n"
-        f"Pending bets have been cleared."
+        f"Pending bets have been cleared.",
+        parse_mode='Markdown'
     )
 
 async def auto_betting_loop(user_id: str, context: ContextTypes.DEFAULT_TYPE):
@@ -2803,7 +3043,8 @@ async def auto_betting_loop(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             if consecutive_failures >= max_failures:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text="Auto Bot Stopped - Too many errors!"
+                    text="Auto Bot Stopped - Too many errors!",
+                    parse_mode='Markdown'
                 )
                 if user_id in auto_betting_tasks:
                     del auto_betting_tasks[user_id]
@@ -2828,7 +3069,8 @@ async def check_targets(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             text=f"PROFIT TARGET REACHED!\n\n"
                  f"Target: {profit_target:,} K\n"
                  f"Achieved: {net_profit:,} K\n\n"
-                 f"Bot has been stopped automatically."
+                 f"Bot has been stopped automatically.",
+            parse_mode='Markdown'
         )
         if user_id in auto_betting_tasks:
             del auto_betting_tasks[user_id]
@@ -2843,7 +3085,8 @@ async def check_targets(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             text=f"LOSS TARGET REACHED!\n\n"
                  f"Target: {loss_target:,} K\n"
                  f"Achieved: {session_loss:,} K\n\n"
-                 f"Bot has been stopped automatically."
+                 f"Bot has been stopped automatically.",
+            parse_mode='Markdown'
         )
         if user_id in auto_betting_tasks:
             del auto_betting_tasks[user_id]
@@ -2946,7 +3189,8 @@ async def place_auto_bet(user_id: str, context: ContextTypes.DEFAULT_TYPE, issue
     if amount > 0 and balance < amount:
         await context.bot.send_message(
             chat_id=int(user_id),
-            text=f"Auto Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K"
+            text=f"Auto Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K",
+            parse_mode='Markdown'
         )
         if user_id in auto_betting_tasks:
             del auto_betting_tasks[user_id]
@@ -2986,12 +3230,13 @@ Type: {clean_bet_type_str}
 Amount: {amount:,} K (Step {current_index + 1})
 {pattern_info}
             """
-            await context.bot.send_message(chat_id=int(user_id), text=bet_text)
+            await context.bot.send_message(chat_id=int(user_id), text=bet_text, parse_mode='Markdown')
             
         else:
             await context.bot.send_message(
                 chat_id=int(user_id),
-                text=f"Auto Bet Failed\n\nError: {message}"
+                text=f"Auto Bet Failed\n\nError: {message}",
+                parse_mode='Markdown'
             )
             waiting_for_results[user_id] = False
             
@@ -3123,7 +3368,7 @@ Bot Statistics:
 
 Choose your betting mode:
     """
-        await update.message.reply_text(settings_text, reply_markup=get_bot_settings_keyboard(user_id))
+        await update.message.reply_text(settings_text, reply_markup=get_bot_settings_keyboard(user_id), parse_mode='Markdown')
     except Exception as e:
         logger.error(f"Error in bot_settings_command: {e}")
         await update.message.reply_text("Error loading bot settings. Please try again.")
@@ -3200,7 +3445,7 @@ Session Data:
 
 *Session statistics reset when bot starts*
     """
-    await update.message.reply_text(stats_text)
+    await update.message.reply_text(stats_text, parse_mode='Markdown')
 
 async def reset_bot_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Reset bot statistics"""
@@ -3342,7 +3587,7 @@ Auto Detection:
 Manage your SL Pattern:
     """
     
-    await update.message.reply_text(sl_info, reply_markup=get_sl_layer_keyboard())
+    await update.message.reply_text(sl_info, reply_markup=get_sl_layer_keyboard(), parse_mode='Markdown')
     
 def get_next_sl_action(user_id):
     """Get description of next action in SL system"""
@@ -3446,7 +3691,8 @@ async def view_sl_pattern_command(update: Update, context: ContextTypes.DEFAULT_
         f"- Wait Loss Count: {wait_loss_count}/{pattern_list[current_index] if current_index < len(pattern_list) else pattern_list[-1]}\n"
         f"- Bet Count: {bet_count}/3\n\n"
         f"Next Action:\n"
-        f"{get_next_sl_action(user_id)}"
+        f"{get_next_sl_action(user_id)}",
+        parse_mode='Markdown'
     )
 
 async def reset_sl_pattern_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3512,7 +3758,8 @@ async def sl_betting_loop(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             if consecutive_failures >= max_failures:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text="SL Bot Stopped - Too many errors!"
+                    text="SL Bot Stopped - Too many errors!",
+                    parse_mode='Markdown'
                 )
                 if user_id in auto_betting_tasks:
                     del auto_betting_tasks[user_id]
@@ -3614,7 +3861,8 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=win_message
+                    text=win_message,
+                    parse_mode='Markdown'
                 )
                 
             else:
@@ -3635,7 +3883,8 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=loss_message
+                    text=loss_message,
+                    parse_mode='Markdown'
                 )
                 
                 if new_wait_loss_count >= current_wait_loss_limit:
@@ -3655,7 +3904,8 @@ Total Profit: {total_profit:,} K
                     
                     await context.bot.send_message(
                         chat_id=int(user_id),
-                        text=transition_message
+                        text=transition_message,
+                        parse_mode='Markdown'
                     )
         
         else:
@@ -3698,7 +3948,8 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=win_message
+                    text=win_message,
+                    parse_mode='Markdown'
                 )
                 
             else:
@@ -3720,7 +3971,8 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=loss_message
+                    text=loss_message,
+                    parse_mode='Markdown'
                 )
                 
                 # FIXED: SL Level Change - Check if completed 3 bets
@@ -3737,7 +3989,8 @@ Total Profit: {total_profit:,} K
                     mode_text = "WAIT BOT" if is_wait_mode else "BETTING"
                     await context.bot.send_message(
                         chat_id=int(user_id),
-                        text=f"\n\nSL LEVEL CHANGE\nCompleted 3 bets -> Moving to SL {new_sl} ({mode_text})"
+                        text=f"\n\nSL LEVEL CHANGE\nCompleted 3 bets -> Moving to SL {new_sl} ({mode_text})",
+                        parse_mode='Markdown'
                     )
         
         await check_targets(user_id, context)
@@ -3979,7 +4232,7 @@ Profit/Loss: {profit_text}
 Total Profit: {bot_session['total_profit']:,} K
             """
             
-            await context.bot.send_message(chat_id=int(user_id), text=result_message)
+            await context.bot.send_message(chat_id=int(user_id), text=result_message, parse_mode='Markdown')
             
             # NEW: Wait for user to read the message
             await asyncio.sleep(3)
@@ -4113,7 +4366,7 @@ Mode: {mode_text} (SL {current_sl})
 {pattern_info}
         """
         
-        await context.bot.send_message(chat_id=int(user_id), text=bet_text)
+        await context.bot.send_message(chat_id=int(user_id), text=bet_text, parse_mode='Markdown')
         
         # FIXED: Wait Bot Mode မှာ waiting_for_results ကို False ပြန်လုပ်ပါ
         waiting_for_results[user_id] = False
@@ -4168,7 +4421,8 @@ Mode: {mode_text} (SL {current_sl})
         if amount > 0 and balance < amount:
             await context.bot.send_message(
                 chat_id=int(user_id),
-                text=f"SL Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K"
+                text=f"SL Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K",
+                parse_mode='Markdown'
             )
             if user_id in auto_betting_tasks:
                 del auto_betting_tasks[user_id]
@@ -4213,12 +4467,13 @@ Bet Count: {next_bet_count}/3
 {pattern_info}
                 """
                 
-                await context.bot.send_message(chat_id=int(user_id), text=bet_text)
+                await context.bot.send_message(chat_id=int(user_id), text=bet_text, parse_mode='Markdown')
                 
             else:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=f"SL Bot Bet Failed\n\nError: {message}"
+                    text=f"SL Bot Bet Failed\n\nError: {message}",
+                    parse_mode='Markdown'
                 )
                 waiting_for_results[user_id] = False
                 
@@ -4285,143 +4540,9 @@ async def force_wait_bot_command(update: Update, context: ContextTypes.DEFAULT_T
         "1. Wait for 2 consecutive losses\n"
         "2. Then bet 3 times with BS/Colour Pattern\n"
         "3. Start betting from 10K\n\n"
-        "Now press Run Bot to start in Wait Bot mode."
+        "Now press Run Bot to start in Wait Bot mode.",
+        parse_mode='Markdown'
     )
-
-# Admin commands
-async def admin_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to add user"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
-        await update.message.reply_text("❌ Admin access required.")
-        return
-    
-    if not context.args:
-        await update.message.reply_text(
-            "Usage: /adduser <user_id>\n\n"
-            "Example: /adduser 123456789"
-        )
-        return
-    
-    try:
-        new_user_id = int(context.args[0])
-        
-        if add_authorized_user(new_user_id, int(user_id)):
-            await update.message.reply_text(
-                f"✅ User {new_user_id} added successfully!\n\n"
-                f"User can now access the bot with /start command."
-            )
-        else:
-            await update.message.reply_text("❌ Failed to add user.")
-            
-    except ValueError:
-        await update.message.reply_text("❌ Invalid user ID. Please provide a numeric user ID.")
-
-async def admin_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to remove user"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
-        await update.message.reply_text("❌ Admin access required.")
-        return
-    
-    if not context.args:
-        await update.message.reply_text(
-            "Usage: /removeuser <user_id>\n\n"
-            "Example: /removeuser 123456789"
-        )
-        return
-    
-    try:
-        remove_user_id = int(context.args[0])
-        
-        if remove_user_id in ADMIN_USER_IDS:
-            await update.message.reply_text("❌ Cannot remove admin users.")
-            return
-        
-        if remove_authorized_user(remove_user_id):
-            await update.message.reply_text(f"✅ User {remove_user_id} removed successfully!")
-        else:
-            await update.message.reply_text("❌ Failed to remove user.")
-            
-    except ValueError:
-        await update.message.reply_text("❌ Invalid user ID. Please provide a numeric user ID.")
-
-async def admin_list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to list all authorized users"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
-        await update.message.reply_text("❌ Admin access required.")
-        return
-    
-    try:
-        authorized_users = get_authorized_users()
-        admin_users = ADMIN_USER_IDS
-        
-        users_text = "👥 Authorized Users List\n\n"
-        
-        users_text += "🔧 Admin Users:\n"
-        for admin_id in admin_users:
-            users_text += f"- {admin_id}\n"
-        
-        users_text += f"\n✅ Authorized Users ({len(authorized_users)}):\n"
-        if authorized_users:
-            for user_id in authorized_users:
-                users_text += f"- {user_id}\n"
-        else:
-            users_text += "No authorized users yet.\n"
-        
-        users_text += f"\nTotal: {len(admin_users) + len(authorized_users)} users"
-        
-        await update.message.reply_text(users_text)
-        
-    except Exception as e:
-        logger.error(f"Admin list users error: {e}")
-        await update.message.reply_text(f"❌ Error: {e}")
-
-async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to show bot statistics"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
-        await update.message.reply_text("❌ Admin access required.")
-        return
-    
-    try:
-        # Get statistics
-        total_users = len(user_sessions)
-        active_sessions = sum(1 for session in user_sessions.values() if session.get('logged_in'))
-        running_bots = sum(1 for uid in auto_betting_tasks if uid in user_sessions and user_sessions[uid].get('logged_in'))
-        authorized_users = get_authorized_users()
-        
-        stats_text = f"""
-🤖 Bot Admin Panel
-
-📊 Statistics:
-- Total Active Sessions: {total_users}
-- Logged In Users: {active_sessions}
-- Running Bots: {running_bots}
-- Authorized Users: {len(authorized_users)}
-- Admin Users: {len(ADMIN_USER_IDS)}
-
-👤 Admin Contact: {ADMIN_CONTACT}
-
-🔧 Available Commands:
-/adduser <id> - Add new user
-/removeuser <id> - Remove user  
-/listusers - Show all users
-/adminstats - Show this stats
-
-Bot Status: ✅ Operational
-        """
-        
-        await update.message.reply_text(stats_text)
-        
-    except Exception as e:
-        logger.error(f"Admin stats error: {e}")
-        await update.message.reply_text(f"Error generating admin report: {e}")
 
 # NEW: Bot Info Command
 async def bot_info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4505,7 +4626,7 @@ Patterns:
 Last Update: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         """
         
-        await update.message.reply_text(bot_info_text)
+        await update.message.reply_text(bot_info_text, parse_mode='Markdown')
         
     except Exception as e:
         logger.error(f"Error in bot_info_command: {e}")
@@ -4535,7 +4656,7 @@ Please select your preferred language:
 Select your language below:
     """
     
-    await update.message.reply_text(language_info, reply_markup=get_language_keyboard())
+    await update.message.reply_text(language_info, reply_markup=get_language_keyboard(), parse_mode='Markdown')
 
 async def set_english_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Set language to English"""
@@ -5046,11 +5167,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Exception while handling an update: {context.error}")
     
-    # Print full error details for debugging
-    import traceback
-    error_traceback = traceback.format_exc()
-    print(f"ERROR DETAILS:\n{error_traceback}")
-    
     if update and update.message:
         await update.message.reply_text(
             "An error occurred. Please try again later.",
@@ -5062,65 +5178,39 @@ def main():
         print("Please set your BOT_TOKEN in the code!")
         return
     
-    # Remove old database if exists to start fresh
-    import os
-    if os.path.exists(DB_NAME):
-        os.remove(DB_NAME)
-        print("Removed old database to start fresh")
-    
     init_database()
     migrate_database()  # Run migration on startup
     
     application = Application.builder().token(BOT_TOKEN).build()
     
+    # Existing handlers
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("admin", admin_stats))
-    application.add_handler(CommandHandler("adduser", admin_add_user))
-    application.add_handler(CommandHandler("removeuser", admin_remove_user))
-    application.add_handler(CommandHandler("listusers", admin_list_users))
-    application.add_handler(CommandHandler("adminstats", admin_stats))
+    
+    # NEW: Admin command handlers
+    application.add_handler(CommandHandler("admin", admin_command))
+    application.add_handler(CommandHandler("addgame", add_game_command))
+    application.add_handler(CommandHandler("removegame", remove_game_command))
+    application.add_handler(CommandHandler("listgames", list_games_command))
+    application.add_handler(CommandHandler("gameids", game_ids_count_command))
+    application.add_handler(CommandHandler("addadmin", add_admin_command))
+    application.add_handler(CommandHandler("removeadmin", remove_admin_command))
+    application.add_handler(CommandHandler("listadmins", list_admins_command))
+    
     application.add_handler(CallbackQueryHandler(handle_callback_query))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)
     
+    # First admin setup (Optional - remove after first use)
+    # Uncomment and replace with your user ID to add yourself as admin
+    # add_admin(6328953001, "Boss")  # Replace with your user ID
+    
     logger.info("Auto Lottery Bot starting...")
     print("Auto Lottery Bot is running...")
-    print("Database migration system: Enabled")
-    print("Multi-language support: Enabled")
-    print("Auto-fix missing database columns: Enabled")
-    print("Features: Wait for Win/Loss before next bet")
-    print("Modes: BIG Only, SMALL Only, Random Bot, Follow Bot")
-    print("BS Formula Pattern Betting System (B,S only)")
-    print("Colour Formula Pattern Betting System (G,R,V only)")
-    print("SL Layer Pattern Betting System - BS/COLOUR PATTERN MODE REQUIRED")
-    print("Bet Sequence System: 100,300,700,1600,3200,7600,16000,32000")
-    print("Profit/Loss Target System")
-    print("Auto Statistics Tracking")
-    print("Colour Betting Support (RED, GREEN, VIOLET)")
-    print("Supported Platform: 777 Big Win ONLY")
-    print("Channel Join Requirement: Enabled")
-    print("NEW: Separate BS Formula (B,S only) and Colour Formula (G,R,V only)")
-    print("NEW: Force Wait Bot Command for SL 2")
-    print("FIXED: SL 2,3,4,5 now properly starts in WAIT BOT mode")
-    print("FIXED: Stop Bot button immediately stops all betting")
-    print("WAIT BOT: No amount display, Fake betting, Win/Loss messages only")
-    print("FIXED: No duplicate Win/Loss messages in Wait Bot mode")
-    print("NEW: Issue tracking system to prevent duplicate messages")
-    print("FIXED: BS/Colour Pattern Position now displays correctly")
-    print("FIXED: Bet Count now displays correctly in all messages")
-    print("NEW: Total Win calculation and display for every WIN")
-    print("NEW: Win တိုင်း အရှေ့ဆုံး SL ပြန်စခြင်း")
-    print("FIXED: SL Bot Bet Count မတက်ဘဲ Bet Result Update ပြတဲ့ပြဿနာ")
-    print("FIXED: 'already processed' issue for SL Bot Win/Loss messages")
-    print("FIXED: Current Step 1 ကနေ Loss ဖြစ်ရင် Current Step 2 ဖြစ်အောင်ပြင်ဆင်ခြင်း")
-    print("FIXED: Bet Sequence ဇကျော်နေတဲ့ ပြဿနာ - 10K ပြီးရင် 30K ထိုးမယ်")
-    print("NEW: Default Bet Sequence: 100,300,700,1600,3200,7600,16000,32000")
-    print("NEW: Language Selection - English, Burmese, Chinese, Thailand, Pakistan")
-    print("NEW: Dynamic Keyboard Localization - Bot Settings menu changes with language")
-    print("NEW: Bot Info button - Comprehensive bot information display")
-    print("NEW: Admin User Management System - Add/Remove users with commands")
-    print("Admin Commands: /adduser, /removeuser, /listusers, /adminstats")
-    print("FIXED: Markdown parsing errors removed - bot should work now!")
+    print("NEW: Admin Game ID Management System - Enabled")
+    print("Admin Commands: /admin, /addgame, /removegame, /listgames, /gameids")
+    print("Admin Management: /addadmin, /removeadmin, /listadmins")
+    print("Game ID Authorization: Users must have allowed Game IDs to login")
+    print("Admin Contact:", ADMIN_CONTACT)
     print("Press Ctrl+C to stop.")
     
     application.run_polling()
