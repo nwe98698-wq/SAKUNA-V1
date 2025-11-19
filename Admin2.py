@@ -2111,18 +2111,23 @@ async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             # Check if user's Game ID is in admin's allowed list
             allowed_game_ids = get_allowed_game_ids(platform)
             
-            if allowed_game_ids and user_game_id not in allowed_game_ids:
-                # User not authorized - show admin contact
-                user_session['logged_in'] = False
-                await loading_msg.edit_text(
-                    f"❌ Auto Login Failed - Unauthorized Account\n\n"
-                    f"Your Game ID: `{user_game_id}`\n"
-                    f"Platform: {get_platform_name(platform)}\n\n"
-                    f"This account is not authorized to use this bot.\n"
-                    f"Please contact admin for access: {ADMIN_CONTACT}",
-                    parse_mode='Markdown'
-                )
-                return
+            # FIXED: Check if admin has set any allowed game IDs
+            if allowed_game_ids:  # Only check if admin has set allowed game IDs
+                if user_game_id not in allowed_game_ids:
+                    # User not authorized - show admin contact
+                    user_session['logged_in'] = False
+                    await loading_msg.edit_text(
+                        f"❌ Auto Login Failed - Unauthorized Account\n\n"
+                        f"Your Game ID: `{user_game_id}`\n"
+                        f"Platform: {get_platform_name(platform)}\n\n"
+                        f"This account is not authorized to use this bot.\n"
+                        f"Please contact admin for access: {ADMIN_CONTACT}",
+                        parse_mode='Markdown'
+                    )
+                    return
+            else:
+                # If no allowed game IDs are set by admin, allow all users
+                print(f"DEBUG: No allowed game IDs set, allowing user {user_game_id}")
             
             # Continue with successful login
             user_session['logged_in'] = True
@@ -2679,24 +2684,24 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
             
             # Check if user's Game ID is in admin's allowed list
             allowed_game_ids = get_allowed_game_ids(platform)
-
-# FIXED: Check if admin has set any allowed game IDs  
-if allowed_game_ids:  # Only check if admin has set allowed game IDs
-    if user_game_id not in allowed_game_ids:
-        # User not authorized
-        user_session['logged_in'] = False
-        await loading_msg.edit_text(
-            f"❌ Login Failed - Unauthorized Account\n\n"
-            f"Your Game ID: `{user_game_id}`\n"
-            f"Platform: {get_platform_name(platform)}\n\n"
-            f"This account is not authorized to use this bot.\n"
-            f"Please contact admin for access: {ADMIN_CONTACT}",
-            parse_mode='Markdown'
-        )
-        return
-else:
-    # If no allowed game IDs are set by admin, allow all users
-    print(f"DEBUG: No allowed game IDs set, allowing user {user_game_id}")
+            
+            # FIXED: Check if admin has set any allowed game IDs
+            if allowed_game_ids:  # Only check if admin has set allowed game IDs
+                if user_game_id not in allowed_game_ids:
+                    # User not authorized - show admin contact
+                    user_session['logged_in'] = False
+                    await loading_msg.edit_text(
+                        f"❌ Login Failed - Unauthorized Account\n\n"
+                        f"Your Game ID: `{user_game_id}`\n"
+                        f"Platform: {get_platform_name(platform)}\n\n"
+                        f"This account is not authorized to use this bot.\n"
+                        f"Please contact admin for access: {ADMIN_CONTACT}",
+                        parse_mode='Markdown'
+                    )
+                    return
+            else:
+                # If no allowed game IDs are set by admin, allow all users
+                print(f"DEBUG: No allowed game IDs set, allowing user {user_game_id}")
             
             # Continue with successful login
             user_session['logged_in'] = True
