@@ -2118,11 +2118,10 @@ async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, us
                     user_session['logged_in'] = False
                     await loading_msg.edit_text(
                         f"❌ Auto Login Failed - Unauthorized Account\n\n"
-                        f"Your Game ID: `{user_game_id}`\n"
+                        f"Your Game ID: {user_game_id}\n"
                         f"Platform: {get_platform_name(platform)}\n\n"
                         f"This account is not authorized to use this bot.\n"
-                        f"Please contact admin for access: {ADMIN_CONTACT}",
-                        parse_mode='Markdown'
+                        f"Please contact admin for access: {ADMIN_CONTACT}"
                     )
                     return
             else:
@@ -2141,13 +2140,13 @@ async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, us
 ✅ Auto Login Successful!
 
 Platform: {platform_name}
-Game ID: `{user_game_id}`
+Game ID: {user_game_id}
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
 
 Status: Authorized ✅
             """
-            await loading_msg.edit_text(success_text, parse_mode='Markdown')
+            await loading_msg.edit_text(success_text)
             await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
