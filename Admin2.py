@@ -128,6 +128,7 @@ def remove_authorized_user(user_id):
 def is_authorized_user(user_id):
     """Check if user is authorized to use the bot"""
     try:
+        # FIXED: Handle both string and integer user IDs
         user_id_int = int(user_id)
         
         # Allow admin users
@@ -138,8 +139,8 @@ def is_authorized_user(user_id):
         authorized_users = get_authorized_users()
         return user_id_int in authorized_users
         
-    except Exception as e:
-        logger.error(f"Error checking user authorization: {e}")
+    except (ValueError, TypeError) as e:
+        logger.error(f"Error checking user authorization for {user_id}: {e}")
         return False
 
 def migrate_database():
