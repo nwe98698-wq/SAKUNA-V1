@@ -5071,9 +5071,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Exception while handling an update: {context.error}")
     
+    # Print full error details
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"Full error details:\n{error_details}")
+    
     if update and update.message:
         await update.message.reply_text(
-            "An error occurred. Please try again later.",
+            f"An error occurred. Please try again later.\nError: {str(context.error)}",
             reply_markup=get_main_keyboard()
         )
 
