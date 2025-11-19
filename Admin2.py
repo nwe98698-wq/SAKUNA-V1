@@ -14,14 +14,13 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # Bot configuration
 BOT_TOKEN = "8006342815:AAHyl0Aamf5fCyj4u0EgYil0zhUcisFnXq0"
 
-# Admin configuration
-ADMIN_USER_ID = 6328953001  # Replace with your actual Telegram User ID
-ALLOWED_USER_IDS = [ADMIN_USER_ID]  # Initially only admin can use the bot
-CONTACT_USERNAME = "@Smile_p2"  # Contact username for invalid users
-
 # Channel configuration
 CHANNEL_USERNAME = "@Vipsafesingalchannel298"
 CHANNEL_LINK = "https://t.me/Vipsafesingalchannel298"
+
+# Admin configuration
+ADMIN_USER_IDS = [6328953001]  # REPLACE WITH YOUR TELEGRAM USER ID
+ADMIN_CONTACT = "@Smile_p2"
 
 # Multiple API endpoints - 777 only
 API_ENDPOINTS = {
@@ -45,40 +44,103 @@ logger = logging.getLogger(__name__)
 # Database setup
 DB_NAME = "auto_bot.db"
 
-# Admin functions
-def is_user_authorized(user_id):
+# Admin management functions
+def save_authorized_users(user_ids):
+    """Save authorized user IDs to database"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Create authorized_users table if not exists
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS authorized_users (
+                user_id INTEGER PRIMARY KEY,
+                added_by INTEGER,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Clear existing users
+        cursor.execute('DELETE FROM authorized_users')
+        
+        # Insert new users
+        for user_id in user_ids:
+            cursor.execute('''
+                INSERT INTO authorized_users (user_id, added_by)
+                VALUES (?, ?)
+            ''', (user_id, user_ids[0]))  # First user is the main admin
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error saving authorized users: {e}")
+        return False
+
+def get_authorized_users():
+    """Get all authorized user IDs from database"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT user_id FROM authorized_users')
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [result[0] for result in results]
+    except Exception as e:
+        logger.error(f"Error getting authorized users: {e}")
+        return []
+
+def add_authorized_user(user_id, added_by):
+    """Add single authorized user"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO authorized_users (user_id, added_by)
+            VALUES (?, ?)
+        ''', (user_id, added_by))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error adding authorized user: {e}")
+        return False
+
+def remove_authorized_user(user_id):
+    """Remove authorized user"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM authorized_users WHERE user_id = ?', (user_id,))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error removing authorized user: {e}")
+        return False
+
+def is_authorized_user(user_id):
     """Check if user is authorized to use the bot"""
     try:
         user_id_int = int(user_id)
-        return user_id_int in ALLOWED_USER_IDS
-    except:
-        return False
-
-def add_allowed_user(new_user_id):
-    """Add new user to allowed list (admin only)"""
-    try:
-        new_user_id_int = int(new_user_id)
-        if new_user_id_int not in ALLOWED_USER_IDS:
-            ALLOWED_USER_IDS.append(new_user_id_int)
+        
+        # Allow admin users
+        if user_id_int in ADMIN_USER_IDS:
             return True
+            
+        # Check authorized users database
+        authorized_users = get_authorized_users()
+        return user_id_int in authorized_users
+        
+    except Exception as e:
+        logger.error(f"Error checking user authorization: {e}")
         return False
-    except:
-        return False
-
-def remove_allowed_user(user_id):
-    """Remove user from allowed list (admin only)"""
-    try:
-        user_id_int = int(user_id)
-        if user_id_int in ALLOWED_USER_IDS and user_id_int != ADMIN_USER_ID:
-            ALLOWED_USER_IDS.remove(user_id_int)
-            return True
-        return False
-    except:
-        return False
-
-def get_allowed_users():
-    """Get list of allowed user IDs"""
-    return ALLOWED_USER_IDS.copy()
 
 def migrate_database():
     """Migrate database to add missing columns"""
@@ -150,6 +212,15 @@ def init_database():
                 loss_target INTEGER DEFAULT 0,
                 language TEXT DEFAULT 'english',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create authorized_users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS authorized_users (
+                user_id INTEGER PRIMARY KEY,
+                added_by INTEGER,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -563,7 +634,7 @@ def update_bet_sequence(user_id, result):
             new_index = 0  # Win ရင် အစပြန်စ
             print(f"DEBUG: WIN - Reset index to 0")
         else:
-            # Loss ရင် နောက်တစ်ဆင့်သို့
+            # Loss ရင် နောက်တစ်ဆင့်သို့
             new_index = current_index + 1
             print(f"DEBUG: LOSE - Current index: {current_index} -> New index: {new_index}")
             
@@ -1723,12 +1794,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     
-    # Check if user is authorized - ADD THIS CHECK
-    if not is_user_authorized(user_id):
+    # Check if user is authorized
+    if not is_authorized_user(user.id):
         await update.message.reply_text(
-            f"🚫 Access Denied\n\n"
+            f"❌ Access Denied\n\n"
             f"Sorry, you are not authorized to use this bot.\n\n"
-            f"If you believe this is an error, please contact admin: {CONTACT_USERNAME}",
+            f"Please contact admin for access: {ADMIN_CONTACT}",
             parse_mode='Markdown'
         )
         return
@@ -2363,6 +2434,16 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
     user_id = str(update.effective_user.id)
     user_session = user_sessions.get(user_id)
     
+    # Check if user is authorized
+    if not is_authorized_user(update.effective_user.id):
+        await update.message.reply_text(
+            f"❌ Access Denied\n\n"
+            f"Sorry, you are not authorized to use this bot.\n\n"
+            f"Please contact admin for access: {ADMIN_CONTACT}",
+            parse_mode='Markdown'
+        )
+        return
+    
     if not user_session or not user_session.get('phone') or not user_session.get('password'):
         await update.message.reply_text(
             "Please enter bot phone number and password first!",
@@ -2407,10 +2488,10 @@ Balance: {balance:,.0f} K
             await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
-            await loading_msg.edit_text(f"Login failed: {message}")
+            await loading_msg.edit_text(f"❌ Login failed: {message}\n\nPlease check your credentials and try again.")
             
     except Exception as e:
-        await loading_msg.edit_text(f"Login error: {str(e)}")
+        await loading_msg.edit_text(f"❌ Login error: {str(e)}\n\nPlease contact admin if problem persists: {ADMIN_CONTACT}")
 
 async def place_bet_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, bet_type: int):
     """Handle bet placement"""
@@ -4231,6 +4312,141 @@ async def force_wait_bot_command(update: Update, context: ContextTypes.DEFAULT_T
         parse_mode='Markdown'
     )
 
+# Admin commands
+async def admin_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to add user"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
+        await update.message.reply_text("❌ Admin access required.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: /adduser <user_id>\n\n"
+            "Example: /adduser 123456789"
+        )
+        return
+    
+    try:
+        new_user_id = int(context.args[0])
+        
+        if add_authorized_user(new_user_id, int(user_id)):
+            await update.message.reply_text(
+                f"✅ User {new_user_id} added successfully!\n\n"
+                f"User can now access the bot with /start command."
+            )
+        else:
+            await update.message.reply_text("❌ Failed to add user.")
+            
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID. Please provide a numeric user ID.")
+
+async def admin_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to remove user"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
+        await update.message.reply_text("❌ Admin access required.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: /removeuser <user_id>\n\n"
+            "Example: /removeuser 123456789"
+        )
+        return
+    
+    try:
+        remove_user_id = int(context.args[0])
+        
+        if remove_user_id in ADMIN_USER_IDS:
+            await update.message.reply_text("❌ Cannot remove admin users.")
+            return
+        
+        if remove_authorized_user(remove_user_id):
+            await update.message.reply_text(f"✅ User {remove_user_id} removed successfully!")
+        else:
+            await update.message.reply_text("❌ Failed to remove user.")
+            
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID. Please provide a numeric user ID.")
+
+async def admin_list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to list all authorized users"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
+        await update.message.reply_text("❌ Admin access required.")
+        return
+    
+    try:
+        authorized_users = get_authorized_users()
+        admin_users = ADMIN_USER_IDS
+        
+        users_text = "👥 Authorized Users List\n\n"
+        
+        users_text += "🔧 Admin Users:\n"
+        for admin_id in admin_users:
+            users_text += f"- {admin_id}\n"
+        
+        users_text += f"\n✅ Authorized Users ({len(authorized_users)}):\n"
+        if authorized_users:
+            for user_id in authorized_users:
+                users_text += f"- {user_id}\n"
+        else:
+            users_text += "No authorized users yet.\n"
+        
+        users_text += f"\nTotal: {len(admin_users) + len(authorized_users)} users"
+        
+        await update.message.reply_text(users_text)
+        
+    except Exception as e:
+        logger.error(f"Admin list users error: {e}")
+        await update.message.reply_text(f"❌ Error: {e}")
+
+async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to show bot statistics"""
+    user_id = str(update.effective_user.id)
+    
+    if not is_authorized_user(update.effective_user.id) or int(user_id) not in ADMIN_USER_IDS:
+        await update.message.reply_text("❌ Admin access required.")
+        return
+    
+    try:
+        # Get statistics
+        total_users = len(user_sessions)
+        active_sessions = sum(1 for session in user_sessions.values() if session.get('logged_in'))
+        running_bots = sum(1 for uid in auto_betting_tasks if uid in user_sessions and user_sessions[uid].get('logged_in'))
+        authorized_users = get_authorized_users()
+        
+        stats_text = f"""
+🤖 Bot Admin Panel
+
+📊 Statistics:
+- Total Active Sessions: {total_users}
+- Logged In Users: {active_sessions}
+- Running Bots: {running_bots}
+- Authorized Users: {len(authorized_users)}
+- Admin Users: {len(ADMIN_USER_IDS)}
+
+👤 Admin Contact: {ADMIN_CONTACT}
+
+🔧 Available Commands:
+/adduser <id> - Add new user
+/removeuser <id> - Remove user  
+/listusers - Show all users
+/adminstats - Show this stats
+
+Bot Status: ✅ Operational
+        """
+        
+        await update.message.reply_text(stats_text, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Admin stats error: {e}")
+        await update.message.reply_text(f"Error generating admin report: {e}")
+
 # NEW: Bot Info Command
 async def bot_info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show comprehensive bot information"""
@@ -4400,74 +4616,9 @@ async def set_pakistan_language(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=get_main_keyboard(user_id)
     )
 
-# Admin Commands
-async def admin_add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to add new user"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_user_authorized(user_id) or int(user_id) != ADMIN_USER_ID:
-        await update.message.reply_text("🚫 Admin access required.")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("Usage: /adduser <user_id>")
-        return
-    
-    new_user_id = context.args[0]
-    
-    if add_allowed_user(new_user_id):
-        await update.message.reply_text(f"✅ User {new_user_id} added successfully!")
-    else:
-        await update.message.reply_text("❌ Failed to add user. User may already exist.")
-
-async def admin_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to remove user"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_user_authorized(user_id) or int(user_id) != ADMIN_USER_ID:
-        await update.message.reply_text("🚫 Admin access required.")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("Usage: /removeuser <user_id>")
-        return
-    
-    remove_user_id = context.args[0]
-    
-    if remove_allowed_user(remove_user_id):
-        await update.message.reply_text(f"✅ User {remove_user_id} removed successfully!")
-    else:
-        await update.message.reply_text("❌ Failed to remove user. User may not exist or is admin.")
-
-async def admin_list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to list all allowed users"""
-    user_id = str(update.effective_user.id)
-    
-    if not is_user_authorized(user_id) or int(user_id) != ADMIN_USER_ID:
-        await update.message.reply_text("🚫 Admin access required.")
-        return
-    
-    users = get_allowed_users()
-    users_list = "\n".join([f"• {user_id}" for user_id in users])
-    
-    await update.message.reply_text(
-        f"👥 Allowed Users ({len(users)}):\n\n{users_list}",
-        parse_mode='Markdown'
-    )
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     language = get_user_language(user_id)
-    
-    # Check if user is authorized - ADD THIS CHECK
-    if not is_user_authorized(user_id):
-        await update.message.reply_text(
-            f"🚫 Access Denied\n\n"
-            f"Sorry, you are not authorized to use this bot.\n\n"
-            f"If you believe this is an error, please contact admin: {CONTACT_USERNAME}",
-            parse_mode='Markdown'
-        )
-        return
     
     if not get_channel_status(user_id):
         has_joined = await check_channel_membership(update, context, update.effective_user.id)
@@ -4935,25 +5086,18 @@ def main():
     
     application = Application.builder().token(BOT_TOKEN).build()
     
-    # Add existing handlers
     application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CallbackQueryHandler(handle_callback_query))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Add admin command handlers - ADD THESE LINES
+    application.add_handler(CommandHandler("admin", admin_stats))
     application.add_handler(CommandHandler("adduser", admin_add_user))
     application.add_handler(CommandHandler("removeuser", admin_remove_user))
     application.add_handler(CommandHandler("listusers", admin_list_users))
-    
+    application.add_handler(CommandHandler("adminstats", admin_stats))
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)
     
     logger.info("Auto Lottery Bot starting...")
     print("Auto Lottery Bot is running...")
-    print("Admin User ID System: Enabled")
-    print(f"Admin User ID: {ADMIN_USER_ID}")
-    print(f"Contact Username: {CONTACT_USERNAME}")
-    print("Features: User authorization system")
-    print("Commands: /adduser, /removeuser, /listusers (admin only)")
     print("Database migration system: Enabled")
     print("Multi-language support: Enabled")
     print("Auto-fix missing database columns: Enabled")
@@ -4987,6 +5131,8 @@ def main():
     print("NEW: Language Selection - English, Burmese, Chinese, Thailand, Pakistan")
     print("NEW: Dynamic Keyboard Localization - Bot Settings menu changes with language")
     print("NEW: Bot Info button - Comprehensive bot information display")
+    print("NEW: Admin User Management System - Add/Remove users with commands")
+    print("Admin Commands: /adduser, /removeuser, /listusers, /adminstats")
     print("Press Ctrl+C to stop.")
     
     application.run_polling()
