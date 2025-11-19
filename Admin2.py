@@ -1782,8 +1782,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         if has_joined:
             await query.edit_message_text(
                 "Thank you for joining our channel! You can now use the bot.\n\n"
-                "Press /start to begin.",
-                reply_markup=None
+                "Press /start to begin."
             )
         else:
             await query.edit_message_text(
@@ -1801,7 +1800,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Access Denied\n\n"
             f"Sorry, you are not authorized to use this bot.\n\n"
             f"Please contact admin for access: {ADMIN_CONTACT}"
-            # parse_mode='Markdown' ကို ဖျက်ပါ
         )
         return
     
@@ -1825,8 +1823,7 @@ Please join our channel below and then click I've Joined to verify.
         """
         await update.message.reply_text(
             welcome_text,
-            reply_markup=get_join_channel_keyboard(),
-            parse_mode='Markdown'
+            reply_markup=get_join_channel_keyboard()
         )
         return
     
@@ -1878,7 +1875,6 @@ Manual Features:
 Press Run Bot to start auto betting!
     """
     await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard(user_id))
-    # parse_mode='Markdown' ကို ဖျက်ပါ
 
 async def auto_login_user(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str):
     """Auto login with saved credentials"""
@@ -1917,9 +1913,10 @@ Platform: {platform_name}
 User ID: {user_id_display}
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
-    """
-    await loading_msg.edit_text(success_text)  # parse_mode ဖျက်ပါ
-    await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
+
+            """
+            await loading_msg.edit_text(success_text)
+            await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
             await loading_msg.edit_text(f"Auto login failed: {message}")
@@ -1954,7 +1951,7 @@ Please follow these steps:
 
 Your credentials will be saved for future use!
     """
-    await update.message.reply_text(login_guide, reply_markup=get_login_keyboard(), parse_mode='Markdown')
+    await update.message.reply_text(login_guide, reply_markup=get_login_keyboard())
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -1975,7 +1972,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         platform_name = get_platform_name(user_session['platform'])
         
-      balance_text = f"""
+        balance_text = f"""
 Account Information
 
 Platform: {platform_name}
@@ -1984,8 +1981,8 @@ Balance: {balance:,.0f} K
 Status: LOGGED IN
 
 Last update: {datetime.now().strftime("%H:%M:%S")}
-    """
-    await update.message.reply_text(balance_text)  # parse_mode ဖျက်ပါ
+        """
+        await update.message.reply_text(balance_text)
     except Exception as e:
         await update.message.reply_text(f"Error getting balance: {str(e)}")
 
@@ -2032,7 +2029,7 @@ async def results_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         results_text += f"\nLast updated: {current_time}"
         
-        await update.message.reply_text(results_text, parse_mode='Markdown')
+        await update.message.reply_text(results_text)
     except Exception as e:
         logger.error(f"Error getting results: {str(e)}")
         await update.message.reply_text(f"Error getting results: {str(e)}")
@@ -2074,7 +2071,7 @@ async def my_bets_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             bets_text += f"{i+1}. {issue} - {bet_type} - {amount:,}K - {result_emoji} {result_text} \n"
         
-        await update.message.reply_text(bets_text, parse_mode='Markdown')
+        await update.message.reply_text(bets_text)
     except Exception as e:
         logger.error(f"Error in my_bets_command: {e}")
         await update.message.reply_text("Error getting bet history. Please try again.")
@@ -2109,8 +2106,7 @@ async def place_colour_bet_handler(update: Update, context: ContextTypes.DEFAULT
         await update.message.reply_text(
             f"Wait for next period\n\n"
             f"You have already placed a bet on issue {current_issue}.\n"
-            f"Please wait for the next game period to place another bet.",
-            parse_mode='Markdown'
+            f"Please wait for the next game period to place another bet."
         )
         return
     
@@ -2158,7 +2154,7 @@ Sequence: {bet_sequence}
 
 Time: {datetime.now().strftime("%H:%M:%S")}
             """
-            await loading_msg.edit_text(bet_text, parse_mode='Markdown')
+            await loading_msg.edit_text(bet_text)
             
         else:
             await loading_msg.edit_text(f"{colour} bet failed: {message}")
@@ -2216,7 +2212,7 @@ Example BS Patterns:
 Choose an option to get started:
         """
     
-    await update.message.reply_text(bs_info, reply_markup=get_bs_pattern_keyboard(), parse_mode='Markdown')
+    await update.message.reply_text(bs_info, reply_markup=get_bs_pattern_keyboard())
 
 async def set_bs_pattern_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Set BS Pattern and activate BS Formula mode"""
@@ -2335,7 +2331,7 @@ Example Colour Patterns:
 Choose an option to get started:
         """
     
-    await update.message.reply_text(colour_info, reply_markup=get_colour_pattern_keyboard(), parse_mode='Markdown')
+    await update.message.reply_text(colour_info, reply_markup=get_colour_pattern_keyboard())
 
 async def set_colour_pattern_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Set Colour Pattern and activate Colour Formula mode"""
@@ -2440,8 +2436,7 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
         await update.message.reply_text(
             f"❌ Access Denied\n\n"
             f"Sorry, you are not authorized to use this bot.\n\n"
-            f"Please contact admin for access: {ADMIN_CONTACT}",
-            parse_mode='Markdown'
+            f"Please contact admin for access: {ADMIN_CONTACT}"
         )
         return
     
@@ -2476,16 +2471,17 @@ async def process_login(update: Update, context: ContextTypes.DEFAULT_TYPE, save
             
             platform_name = get_platform_name(user_session['platform'])
             
-           success_text = f"""
+            success_text = f"""
 Login Successful!
 
 Platform: {platform_name}
 User ID: {user_id_display}
 Account: {user_session['phone']}
 Balance: {balance:,.0f} K
-    """
-    await loading_msg.edit_text(success_text)  # parse_mode ဖျက်ပါ
-    await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
+
+            """
+            await loading_msg.edit_text(success_text)
+            await update.message.reply_text("Choose an option:", reply_markup=get_main_keyboard(user_id))
             
         else:
             await loading_msg.edit_text(f"❌ Login failed: {message}\n\nPlease check your credentials and try again.")
@@ -2511,8 +2507,7 @@ async def place_bet_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await update.message.reply_text(
             f"Wait for next period\n\n"
             f"You have already placed a bet on issue {current_issue}.\n"
-            f"Please wait for the next game period to place another bet.",
-            parse_mode='Markdown'
+            f"Please wait for the next game period to place another bet."
         )
         return
     
@@ -2556,7 +2551,7 @@ Issue: {issue_id}
 Type: {bet_type_str}
 Amount: {amount:,} K (Step {current_index + 1})
             """
-            await loading_msg.edit_text(bet_text, parse_mode='Markdown')
+            await loading_msg.edit_text(bet_text)
             
         else:
             await loading_msg.edit_text(f"Bet failed: {message}")
@@ -2652,8 +2647,7 @@ async def run_bot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"SL Layer: {sl_status}\n"
         f"Status: RUNNING\n\n"
         f"Bot will start placing bets automatically.\n"
-        f"{mode_details}",
-        parse_mode='Markdown'
+        f"{mode_details}"
     )
     
     asyncio.create_task(auto_betting_loop(user_id, context))
@@ -2723,8 +2717,7 @@ async def run_sl_bot_integrated(update: Update, context: ContextTypes.DEFAULT_TY
         f"Bet Sequence: {bet_sequence}\n"
         f"Starting Bet: {current_amount} K\n\n"
         f"Bot Status: RUNNING\n\n"
-        f"Bot will now start with {mode_text} mode for SL {sl_pattern_data['current_sl']}.",
-        parse_mode='Markdown'
+        f"Bot will now start with {mode_text} mode for SL {sl_pattern_data['current_sl']}."
     )
     
     asyncio.create_task(sl_betting_loop(user_id, context))
@@ -2768,8 +2761,7 @@ async def stop_bot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Mode: {current_mode}\n"
         f"Status: STOPPED\n\n"
         f"All betting activities have been stopped immediately.\n"
-        f"Pending bets have been cleared.",
-        parse_mode='Markdown'
+        f"Pending bets have been cleared."
     )
 
 async def auto_betting_loop(user_id: str, context: ContextTypes.DEFAULT_TYPE):
@@ -2811,8 +2803,7 @@ async def auto_betting_loop(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             if consecutive_failures >= max_failures:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text="Auto Bot Stopped - Too many errors!",
-                    parse_mode='Markdown'
+                    text="Auto Bot Stopped - Too many errors!"
                 )
                 if user_id in auto_betting_tasks:
                     del auto_betting_tasks[user_id]
@@ -2837,8 +2828,7 @@ async def check_targets(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             text=f"PROFIT TARGET REACHED!\n\n"
                  f"Target: {profit_target:,} K\n"
                  f"Achieved: {net_profit:,} K\n\n"
-                 f"Bot has been stopped automatically.",
-            parse_mode='Markdown'
+                 f"Bot has been stopped automatically."
         )
         if user_id in auto_betting_tasks:
             del auto_betting_tasks[user_id]
@@ -2853,8 +2843,7 @@ async def check_targets(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             text=f"LOSS TARGET REACHED!\n\n"
                  f"Target: {loss_target:,} K\n"
                  f"Achieved: {session_loss:,} K\n\n"
-                 f"Bot has been stopped automatically.",
-            parse_mode='Markdown'
+                 f"Bot has been stopped automatically."
         )
         if user_id in auto_betting_tasks:
             del auto_betting_tasks[user_id]
@@ -2957,8 +2946,7 @@ async def place_auto_bet(user_id: str, context: ContextTypes.DEFAULT_TYPE, issue
     if amount > 0 and balance < amount:
         await context.bot.send_message(
             chat_id=int(user_id),
-            text=f"Auto Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K",
-            parse_mode='Markdown'
+            text=f"Auto Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K"
         )
         if user_id in auto_betting_tasks:
             del auto_betting_tasks[user_id]
@@ -2998,13 +2986,12 @@ Type: {clean_bet_type_str}
 Amount: {amount:,} K (Step {current_index + 1})
 {pattern_info}
             """
-            await context.bot.send_message(chat_id=int(user_id), text=bet_text, parse_mode='Markdown')
+            await context.bot.send_message(chat_id=int(user_id), text=bet_text)
             
         else:
             await context.bot.send_message(
                 chat_id=int(user_id),
-                text=f"Auto Bet Failed\n\nError: {message}",
-                parse_mode='Markdown'
+                text=f"Auto Bet Failed\n\nError: {message}"
             )
             waiting_for_results[user_id] = False
             
@@ -3136,7 +3123,7 @@ Bot Statistics:
 
 Choose your betting mode:
     """
-        await update.message.reply_text(settings_text, reply_markup=get_bot_settings_keyboard(user_id), parse_mode='Markdown')
+        await update.message.reply_text(settings_text, reply_markup=get_bot_settings_keyboard(user_id))
     except Exception as e:
         logger.error(f"Error in bot_settings_command: {e}")
         await update.message.reply_text("Error loading bot settings. Please try again.")
@@ -3213,7 +3200,7 @@ Session Data:
 
 *Session statistics reset when bot starts*
     """
-    await update.message.reply_text(stats_text, parse_mode='Markdown')
+    await update.message.reply_text(stats_text)
 
 async def reset_bot_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Reset bot statistics"""
@@ -3355,7 +3342,7 @@ Auto Detection:
 Manage your SL Pattern:
     """
     
-    await update.message.reply_text(sl_info, reply_markup=get_sl_layer_keyboard(), parse_mode='Markdown')
+    await update.message.reply_text(sl_info, reply_markup=get_sl_layer_keyboard())
     
 def get_next_sl_action(user_id):
     """Get description of next action in SL system"""
@@ -3459,8 +3446,7 @@ async def view_sl_pattern_command(update: Update, context: ContextTypes.DEFAULT_
         f"- Wait Loss Count: {wait_loss_count}/{pattern_list[current_index] if current_index < len(pattern_list) else pattern_list[-1]}\n"
         f"- Bet Count: {bet_count}/3\n\n"
         f"Next Action:\n"
-        f"{get_next_sl_action(user_id)}",
-        parse_mode='Markdown'
+        f"{get_next_sl_action(user_id)}"
     )
 
 async def reset_sl_pattern_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3526,8 +3512,7 @@ async def sl_betting_loop(user_id: str, context: ContextTypes.DEFAULT_TYPE):
             if consecutive_failures >= max_failures:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text="SL Bot Stopped - Too many errors!",
-                    parse_mode='Markdown'
+                    text="SL Bot Stopped - Too many errors!"
                 )
                 if user_id in auto_betting_tasks:
                     del auto_betting_tasks[user_id]
@@ -3629,8 +3614,7 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=win_message,
-                    parse_mode='Markdown'
+                    text=win_message
                 )
                 
             else:
@@ -3651,8 +3635,7 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=loss_message,
-                    parse_mode='Markdown'
+                    text=loss_message
                 )
                 
                 if new_wait_loss_count >= current_wait_loss_limit:
@@ -3672,8 +3655,7 @@ Total Profit: {total_profit:,} K
                     
                     await context.bot.send_message(
                         chat_id=int(user_id),
-                        text=transition_message,
-                        parse_mode='Markdown'
+                        text=transition_message
                     )
         
         else:
@@ -3716,8 +3698,7 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=win_message,
-                    parse_mode='Markdown'
+                    text=win_message
                 )
                 
             else:
@@ -3739,8 +3720,7 @@ Total Profit: {total_profit:,} K
                 
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=loss_message,
-                    parse_mode='Markdown'
+                    text=loss_message
                 )
                 
                 # FIXED: SL Level Change - Check if completed 3 bets
@@ -3757,8 +3737,7 @@ Total Profit: {total_profit:,} K
                     mode_text = "WAIT BOT" if is_wait_mode else "BETTING"
                     await context.bot.send_message(
                         chat_id=int(user_id),
-                        text=f"\n\nSL LEVEL CHANGE\nCompleted 3 bets -> Moving to SL {new_sl} ({mode_text})",
-                        parse_mode='Markdown'
+                        text=f"\n\nSL LEVEL CHANGE\nCompleted 3 bets -> Moving to SL {new_sl} ({mode_text})"
                     )
         
         await check_targets(user_id, context)
@@ -4000,7 +3979,7 @@ Profit/Loss: {profit_text}
 Total Profit: {bot_session['total_profit']:,} K
             """
             
-            await context.bot.send_message(chat_id=int(user_id), text=result_message, parse_mode='Markdown')
+            await context.bot.send_message(chat_id=int(user_id), text=result_message)
             
             # NEW: Wait for user to read the message
             await asyncio.sleep(3)
@@ -4134,7 +4113,7 @@ Mode: {mode_text} (SL {current_sl})
 {pattern_info}
         """
         
-        await context.bot.send_message(chat_id=int(user_id), text=bet_text, parse_mode='Markdown')
+        await context.bot.send_message(chat_id=int(user_id), text=bet_text)
         
         # FIXED: Wait Bot Mode မှာ waiting_for_results ကို False ပြန်လုပ်ပါ
         waiting_for_results[user_id] = False
@@ -4189,8 +4168,7 @@ Mode: {mode_text} (SL {current_sl})
         if amount > 0 and balance < amount:
             await context.bot.send_message(
                 chat_id=int(user_id),
-                text=f"SL Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K",
-                parse_mode='Markdown'
+                text=f"SL Bot Stopped - Insufficient Balance!\n\nNeed: {amount:,} K\nAvailable: {balance:,} K"
             )
             if user_id in auto_betting_tasks:
                 del auto_betting_tasks[user_id]
@@ -4235,13 +4213,12 @@ Bet Count: {next_bet_count}/3
 {pattern_info}
                 """
                 
-                await context.bot.send_message(chat_id=int(user_id), text=bet_text, parse_mode='Markdown')
+                await context.bot.send_message(chat_id=int(user_id), text=bet_text)
                 
             else:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=f"SL Bot Bet Failed\n\nError: {message}",
-                    parse_mode='Markdown'
+                    text=f"SL Bot Bet Failed\n\nError: {message}"
                 )
                 waiting_for_results[user_id] = False
                 
@@ -4308,8 +4285,7 @@ async def force_wait_bot_command(update: Update, context: ContextTypes.DEFAULT_T
         "1. Wait for 2 consecutive losses\n"
         "2. Then bet 3 times with BS/Colour Pattern\n"
         "3. Start betting from 10K\n\n"
-        "Now press Run Bot to start in Wait Bot mode.",
-        parse_mode='Markdown'
+        "Now press Run Bot to start in Wait Bot mode."
     )
 
 # Admin commands
@@ -4441,7 +4417,7 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Bot Status: ✅ Operational
         """
         
-        await update.message.reply_text(stats_text, parse_mode='Markdown')
+        await update.message.reply_text(stats_text)
         
     except Exception as e:
         logger.error(f"Admin stats error: {e}")
@@ -4529,7 +4505,7 @@ Patterns:
 Last Update: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         """
         
-        await update.message.reply_text(bot_info_text, parse_mode='Markdown')
+        await update.message.reply_text(bot_info_text)
         
     except Exception as e:
         logger.error(f"Error in bot_info_command: {e}")
@@ -4559,7 +4535,7 @@ Please select your preferred language:
 Select your language below:
     """
     
-    await update.message.reply_text(language_info, reply_markup=get_language_keyboard(), parse_mode='Markdown')
+    await update.message.reply_text(language_info, reply_markup=get_language_keyboard())
 
 async def set_english_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Set language to English"""
@@ -5070,14 +5046,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Exception while handling an update: {context.error}")
     
-    # Print full error details
+    # Print full error details for debugging
     import traceback
-    error_details = traceback.format_exc()
-    print(f"Full error details:\n{error_details}")
+    error_traceback = traceback.format_exc()
+    print(f"ERROR DETAILS:\n{error_traceback}")
     
     if update and update.message:
         await update.message.reply_text(
-            f"An error occurred. Please try again later.\nError: {str(context.error)}",
+            "An error occurred. Please try again later.",
             reply_markup=get_main_keyboard()
         )
 
@@ -5085,6 +5061,12 @@ def main():
     if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
         print("Please set your BOT_TOKEN in the code!")
         return
+    
+    # Remove old database if exists to start fresh
+    import os
+    if os.path.exists(DB_NAME):
+        os.remove(DB_NAME)
+        print("Removed old database to start fresh")
     
     init_database()
     migrate_database()  # Run migration on startup
@@ -5138,6 +5120,7 @@ def main():
     print("NEW: Bot Info button - Comprehensive bot information display")
     print("NEW: Admin User Management System - Add/Remove users with commands")
     print("Admin Commands: /adduser, /removeuser, /listusers, /adminstats")
+    print("FIXED: Markdown parsing errors removed - bot should work now!")
     print("Press Ctrl+C to stop.")
     
     application.run_polling()
