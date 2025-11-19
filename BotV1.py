@@ -108,7 +108,7 @@ def init_database():
                 random_betting TEXT DEFAULT 'bot',
                 profit_target INTEGER DEFAULT 0,
                 loss_target INTEGER DEFAULT 0,
-                language TEXT DEFAULT 'english',  # NEW: Language setting
+                language TEXT DEFAULT 'english',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -228,6 +228,7 @@ def init_database():
         
     except Exception as e:
         logger.error(f"Database initialization error: {e}")
+        print(f"Database initialization error: {e}")
 
 def save_channel_status(user_id, has_joined):
     """Save channel join status"""
@@ -522,7 +523,7 @@ def update_bet_sequence(user_id, result):
             new_index = 0  # Win ရင် အစပြန်စ
             print(f"DEBUG: WIN - Reset index to 0")
         else:
-            # Loss ရင် နောက်တစ်ဆင့်သို့
+            # Loss ရင် နောက်တစ်ဆင့်သို့
             new_index = current_index + 1
             print(f"DEBUG: LOSE - Current index: {current_index} -> New index: {new_index}")
             
